@@ -6,7 +6,7 @@ class ContentManagementApi:
     '''
     Content Management API.
 
-    Manage content in your organization’s library.
+    Manage content in your organization's library.
     '''
     def __init__(self, api_client):
         self.folder_api = folder.FolderManagementApi(api_client)
