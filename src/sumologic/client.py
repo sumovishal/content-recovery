@@ -1,7 +1,7 @@
 import json
 import logging
 import json
-from urllib.parse import urljoin
+from urlparse import urlparse
 import requests
 
 logger = logging.getLogger('sumologic')
