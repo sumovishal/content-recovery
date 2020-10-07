@@ -2,7 +2,7 @@ class ContentPermissionApi:
     '''
     Content Permission Management API.
 
-    Manage permissions on content in your organization’s library.
+    Manage permissions on content in your organization's library.
     '''
     def __init__(self, api_client):
         self.api_client = api_client

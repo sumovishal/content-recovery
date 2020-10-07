@@ -5,7 +5,7 @@ class FolderManagementApi:
     '''
     Folder Management API.
 
-    Manage folders in your organization’s library.
+    Manage folders in your organization's library.
     '''
     def __init__(self, api_client):
         self.api_client = api_client
