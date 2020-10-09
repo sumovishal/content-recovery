@@ -15,6 +15,8 @@ import folder
 
 parser = argparse.ArgumentParser(description='Bring back dead content')
 parser.add_argument('-o', dest='org', type=str, required=True, help='org id (in decimal)')
+parser.add_argument('-u', dest='user', type=str, required=False,
+                    help='user id (in decimal) if recovery needs to run for a user only')
 parser.add_argument('--dry-run', dest='dry', action='store_true', help='list down content to recover')
 args = parser.parse_args()
 
@@ -43,6 +45,7 @@ if not args.dry and util.config['api']['endpoint'] is "":
 
 util.config['dryRun'] = args.dry
 util.config['orgId'] = args.org
+util.config['userId'] = args.user
 
 orgDb = util.config['orgDb']
 util.config['orgName'] = org.getOrgName(orgDb['host'], orgDb['user'], orgDb['password'], util.config['orgId'])
@@ -51,7 +54,7 @@ logger = util.getLogger()
 logger.setLevel(logging.INFO)
 # disable logs on dry run
 if args.dry:
-    logger.propagate = False
+    logging.disable(logging.CRITICAL)
 
 # start recovery
 folder.recover()

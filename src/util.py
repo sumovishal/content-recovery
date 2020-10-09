@@ -20,11 +20,6 @@ config = {
         'accessKey': "",
         'endpoint': ""
     },
-
-    # don't need to fill properties below this line
-    'dryRun': False,
-    'orgId': "", # org id (in decimal) in the RDS snapshot of the org to recover.
-    'orgName': "",
 }
 
 logger = None
