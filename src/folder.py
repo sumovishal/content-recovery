@@ -3,13 +3,14 @@ import logging
 import requests
 from sumologic.api import folder
 import util
+import org
 import search
 import report
 
 
 orgId = None
+folderApi = None
 users = {}
-folderApi = folder.FolderManagementApi(util.getApiClient())
 logger = util.getLogger()
 
 
@@ -57,6 +58,9 @@ def createNewFolder(name, description, parentId):
 
 
 def createTopFolder(name, description, parentId):
+    if util.config['dryRun']:
+        return '00000000'
+
     topFolderId = createNewFolder(name, description, parentId)
     print("Content will be recovered in folder: {}".format(topFolderId))
     return topFolderId
@@ -124,15 +128,24 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
 
 
 def recover():
-    global orgId, users
+    global orgId, users, folderApi
+
     orgId = util.config['orgId']
-    db = util.config['db']
-    users = util.getUserMap(db['host'], db['user'], db['password'], orgId)
-    with util.SqlClient(db['host'], db['user'], db['password'], "org") as dbCursor:
+    orgName = util.config['orgName']
+    orgDb = util.config['orgDb']
+    users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId)
+
+    appDb = util.config['appDb']
+    with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as dbCursor:
         startTime = time.time()
-        myPersonalFolder = folderApi.get_personal_folder()
-        # parent folder for recovery
-        topFolderId = createTopFolder("Remedy - Recovered Content", "All recovered content", myPersonalFolder['id'])
+
+        print(f"Start recovery for {orgName}({orgId})..")
+        topFolderId = '00000000'
+        if not util.config['dryRun']:
+            folderApi = folder.FolderManagementApi(util.getApiClient())
+            myPersonalFolder = folderApi.get_personal_folder()
+            # parent folder for recovery
+            topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
         createPersonalFolders(dbCursor, topFolderId)
         print("\nDone..time taken={0}m".format((time.time() - startTime) // 60))
 

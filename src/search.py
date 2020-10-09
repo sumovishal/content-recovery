@@ -5,7 +5,6 @@ from sumologic import client
 from sumologic.api import content
 
 
-contentApi = content.ContentManagementApi(util.getApiClient())
 logger = util.getLogger()
 
 
@@ -97,9 +96,10 @@ def createSearch(dbCursor, name, description, searchId, newParentId, indent):
         return
 
     try:
-       contentApi.sync(newParentId, newSearch.asdict(), overwrite=True)
+        contentApi = content.ContentManagementApi(util.getApiClient())
+        contentApi.sync(newParentId, newSearch.asdict(), overwrite=True)
     except Exception as e:
-       logger.error("Got error while syncing search: %s", name)
-       print("{0}ERROR: {1} - FAILED".format(' '*indent, name))
+        logger.error("Got error while syncing search: %s", name)
+        print("{0}ERROR: {1} - FAILED".format(' '*indent, name))
 
 

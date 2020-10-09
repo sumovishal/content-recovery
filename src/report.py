@@ -7,7 +7,6 @@ from sumologic import client
 from sumologic.api import content
 
 
-contentApi = content.ContentManagementApi(util.getApiClient())
 logger = util.getLogger()
 
 
@@ -239,8 +238,9 @@ def createReport(dbCursor, name, description, reportId, newParentId, indent):
         return
 
     try:
-       contentApi.sync(newParentId, newReport.asdict(), overwrite=True)
+        contentApi = content.ContentManagementApi(util.getApiClient())
+        contentApi.sync(newParentId, newReport.asdict(), overwrite=True)
     except Exception as e:
-       logger.error("Got error while syncing report: %s", name)
-       print("{0}ERROR: {1} - FAILED".format(' '*indent, name))
+        logger.error("Got error while syncing report: %s", name)
+        print("{0}ERROR: {1} - FAILED".format(' '*indent, name))
 
