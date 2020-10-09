@@ -72,7 +72,8 @@ def createPersonalFolders(dbCursor, topFolderId):
              "from content_tree "
              "where organization_id = {0} and target_type = 'folder' and "
              "name = 'Personal' and parent_id is null")
-    #query += " and user_id in (4710591)"
+    if util.config['userId']:
+        query += f" and user_id = {util.config['userId']}"
     dbCursor.execute(query.format(orgId))
 
     # iterate over all personal folders and create all content underneath
@@ -133,13 +134,14 @@ def recover():
     orgId = util.config['orgId']
     orgName = util.config['orgName']
     orgDb = util.config['orgDb']
-    users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId)
+    userId = util.config['userId']
+    users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId, userId)
 
     appDb = util.config['appDb']
     with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as dbCursor:
         startTime = time.time()
 
-        print(f"Start recovery for {orgName}({orgId})..")
+        print(f"Start recovery for {orgName}(id={orgId})..")
         topFolderId = '00000000'
         if not util.config['dryRun']:
             folderApi = folder.FolderManagementApi(util.getApiClient())
@@ -147,5 +149,5 @@ def recover():
             # parent folder for recovery
             topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
         createPersonalFolders(dbCursor, topFolderId)
-        print("\nDone..time taken={0}m".format((time.time() - startTime) // 60))
+        print("\nDone..time taken={0}s".format(int(time.time() - startTime)))
 

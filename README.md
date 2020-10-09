@@ -1,5 +1,5 @@
 # Content Recovery With Some Hacks
-*****This is a poor man's solution to recover deleted folder, searches, and dashboards**
+**This is a poor man's solution to recover deleted folder, searches, and dashboards**
 This is hacky solution with some assumptions. It SHOULD be used with caution. Recovery is a two step process:
 1. Restore a RDS snapshot that still has deleted content.
 2. Read data from snapshot and use Content Import API to recreate it.
