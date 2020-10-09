@@ -5,6 +5,7 @@ import logging
 import time
 from sumologic.api import folder
 import util
+import org
 
 config = {
     'srcDb': {
@@ -169,7 +170,7 @@ def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId):
     destHost, destUser, destPass = destDbConfig['host'], destDbConfig['user'], destDbConfig['password']
 
     global users
-    users = util.getUserMap(srcHost, srcUser, srcPass, srcOrgId)
+    users = org.getUserMap(srcHost, srcUser, srcPass, srcOrgId)
 
     with util.SqlClient(srcHost, srcUser, srcPass) as srcDb, util.SqlClient(destHost, destUser, destPass) as destDb:
         startTime = time.time()

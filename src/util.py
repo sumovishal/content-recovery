@@ -5,7 +5,12 @@ from sumologic import client
 
 
 config = {
-    'db': {
+    'orgDb': {
+        'host': "",
+        'user': "",
+        'password': ""
+    },
+    'appDb': {
         'host': "",
         'user': "",
         'password': ""
@@ -15,8 +20,11 @@ config = {
         'accessKey': "",
         'endpoint': ""
     },
+
+    # don't need to fill properties below this line
     'dryRun': False,
     'orgId': "", # org id (in decimal) in the RDS snapshot of the org to recover.
+    'orgName': "",
 }
 
 logger = None
@@ -63,22 +71,3 @@ def getLogger():
 
     return logger
 
-
-def getUserMap(host, user, password, orgId):
-    users = dict()
-
-    with SqlClient(host, user, password, dbName='orgstore') as dbCursor:
-        query = ("select id, email "
-                 "from users "
-                 "where customer_id={0} and email_verified=1")
-        dbCursor.execute(query.format(orgId))
-        for row in dbCursor.fetchall():
-            users[row[0]] = row[1]
-
-    return users
-
-
-if __name__ == '__main__':
-    db = config['db']
-    users = getUserMap(db['host'], db['user'], db['password'], config['orgId'])
-    print(list(users.items())[:5])

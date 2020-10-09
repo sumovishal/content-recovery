@@ -1,21 +1,25 @@
 ## Content Recovery with some hacks
-*****This is a poor man's solution to recover folder, searches, and dashboards for an org from a RDS snapshot.**
+**This is a poor man's solution to recover folder, searches, and dashboards for an org from a RDS snapshot.**
 
-This is highly customized for the use-case (Remedy) we had to recover. Some gotchas:
-1. We did not recover "autocomplete" data in searches. Remedy was not using it.
-2. We hacked timeranges in panels in dashboards. We didn't write a converter to convert timeranges (see report.py#toTimeRange).
+We only attempt to recover saved searches and dashboards. Not all information is recovered. See next section for
+more details.
+
+### Limitations
+1. "autocomplete" data in searches is not recovered.
+2. Timeranges for panels in dashboards are recovered via a hacky solution (see report.py#toTimeRange).
 3. Search schedules are not recovered.
 4. Permissions are not recovered.
 
-Drilldown features doesn't work in dashboards after recovery. Drilldown feature needs `properties_blob` column in `panels`
-table to set. Content import api doesn't set the `properties_blob` column. To fix that, we copy over properties_blob
-from snapshot to the newly created dashboards. See `drilldown.py` for details.
+### Dashboard Drilldown Feature
+Drilldown feature doesn't work in dashboards after recovery. Drilldown feature needs `properties_blob` column in
+`panels` table to set. Content import api doesn't set the `properties_blob` column. To fix that, we copy over
+`properties_blob` from snapshot to the newly created dashboards. See `drilldown.py` for details.
 
 
 ## Requirements
-  - Python 3.5+
+  - Python 3.7+
   - [Requests](http://docs.python-requests.org/en/master/) package
-  - python-mysqldb package
+  - python3-mysqldb package
 
 ## Usage
 ### To recover content
