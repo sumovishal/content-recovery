@@ -69,6 +69,8 @@ class Panel:
         }
 
     def toTimeRange(self, timeRange, panelId):
+        # We currently only support Literal and Relative time ranges.
+        # This method needs to be extended if more time range types are needed for your use case.
         timeRangeDefaultJson = {
             'type': 'BeginBoundedTimeRange',
             'from': {
