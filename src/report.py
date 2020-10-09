@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 
 import util
 import timerangemap
@@ -68,10 +69,6 @@ class Panel:
         }
 
     def toTimeRange(self, timeRange, panelId):
-        # FIXME: THIS IS A HACK
-        # We pulled out all the time ranges for Remedy from db and converted them to API model
-        # via scala converters in Sanyaku repo. We need to write a converter that take db time ranges
-        # and converts them to model accepted by content sync api.
         timeRangeDefaultJson = {
             'type': 'BeginBoundedTimeRange',
             'from': {
@@ -81,11 +78,77 @@ class Panel:
         }
 
         try:
-            timeRangeJson = timerangemap.timeRangeMap[panelId]
-        except KeyError as ke:
-            timeRangeJson = timeRangeDefaultJson
-            logger.error("no timerange exist for panel id: {0}".format(panelId))
-        return timeRangeJson
+            timeRangeJson = json.loads(timeRange)
+            if len(timeRangeJson) != 1:
+                raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default.".format(timeRange))
+
+            timeRangeObject = timeRangeJson[0]
+            if timeRangeObject['t'] == 'relative':
+                timeRangeApiJson = self.getRelativeTimeRangeApiJson(timeRangeObject)
+            elif timeRangeObject['t'] == 'literal':
+                timeRangeApiJson = self.getLiteralTimeRangeApiJson(timeRangeObject)
+            else:
+                raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default.".format(timeRange))
+        except Exception as err:
+            print("Error getting timeRange: {0}. Falling back on default.".format(err))
+            timeRangeApiJson = timeRangeDefaultJson
+
+        print("Original DB timeRange JSON: {0}. Converted API timeRange JSON: {1}".format(timeRangeJson, timeRangeApiJson))
+        return timeRangeApiJson
+
+    def getRelativeTimeRangeApiJson(self, timeRangeObject):
+        return {
+            'type': 'BeginBoundedTimeRange',
+            'from': {
+                'type': 'RelativeTimeRangeBoundary',
+                'relativeTime': self.getRelativeTime(timeRangeObject['d'])
+            },
+        }
+
+    def getRelativeTime(self, millisecs):
+        if millisecs == 0:
+            return '0'
+        return self.getRelativeTimeHelper(abs(millisecs), '-' if millisecs < 0 else '')
+
+    millisecsPerUnit = [
+        ('w', 604800000),
+        ('d', 86400000),
+        ('h', 3600000),
+        ('m', 60000),
+        ('s', 1000)
+    ]
+
+    def getRelativeTimeHelper(self, remainingMillisecs, currRelativeTimeString):
+        if remainingMillisecs <= 0:
+            return currRelativeTimeString
+
+        # Going from largest to smallest:
+        for unit in self.millisecsPerUnit:
+            millisecsInUnit = unit[1]
+            if remainingMillisecs >= millisecsInUnit:
+                numWholeUnits = math.floor(remainingMillisecs / millisecsInUnit)
+                newRemainingMillisecs = remainingMillisecs - (millisecsInUnit * numWholeUnits)
+                newRelativeTimeString = currRelativeTimeString + (str(numWholeUnits) + unit[0])
+                return self.getRelativeTimeHelper(newRemainingMillisecs, newRelativeTimeString)
+
+        return currRelativeTimeString
+
+    def getLiteralTimeRangeApiJson(self, timeRangeObject):
+        if timeRangeObject['d'] in ('yesterday', 'previous_week', 'previous_month'):
+            return {
+                'type': 'CompleteLiteralTimeRange',
+                'rangeName': timeRangeObject['d']
+            }
+        elif timeRangeObject['d'] in ('now', 'today', 'second', 'minute', 'hour', 'day', 'week', 'month', 'year'):
+            return {
+                'type': 'BeginBoundedTimeRange',
+                'from': {
+                    'type': 'LiteralTimeRangeBoundary',
+                    'rangeName': timeRangeObject['d']
+                }
+            }
+        else:
+            raise Exception("Unrecognized literal value: {0}. Falling back on default.".format(timeRangeObject['d']))
 
 
 class Filters:
