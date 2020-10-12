@@ -8,19 +8,24 @@ import util
 import org
 
 config = {
-    'srcDb': {
+    'srcOrgDb': {
         'host': "",
         'user': "",
         'password': ""
     },
-    'destDb': {
+    'srcAppDb': {
+        'host': "",
+        'user': "",
+        'password': ""
+    },
+    'destAppDb': {
         'host': "",
         'user': "",
         'password': ""
     },
 }
 
-logger = logging.getLogger('recovery')
+logger = util.getLogger()
 logger.setLevel(logging.INFO)
 dryRun = False
 users = {}
@@ -75,7 +80,7 @@ def updatePropertiesBlob(srcDb, oldReportId, destDb, newReportId, indent):
             if not dryRun:
                 logger.info("Updating panel: {0}({1}), query: {2}".format(
                     name, newPanelId, query % (propertiesBlob, newReportId, newPanelId)))
-                #retval = destDb.execute(query, (propertiesBlob, newReportId, newPanelId))
+                retval = destDb.execute(query, (propertiesBlob, newReportId, newPanelId))
                 logger.info("Panel: %s(%s), rows affected: %s", name, newPanelId, retval)
             else:
                 logger.info("[DryRun] Will update panel: {0}({1}), query: {2}".format(
@@ -131,13 +136,15 @@ def iterateFolders(srcDb, oldParentId, destDb, newParentId, indent):
             logger.error("Item missing in new db: {0}, parentId: {1}".format(child, newParentId))
 
 
-def iteratePersonalFolders(srcDb, destDb, recoveryFolderId):
+def iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId=None):
     # find all personal folders
     query = ("select user_id, description, system_id "
              "from content_tree "
              "where organization_id = {0} and target_type = 'folder' and "
              "name = 'Personal' and parent_id is null")
-    query += " and user_id not in (2791963)" # security+sumosupport+remedy+bpci+partners+llc@sumologic.com
+    #query += " and user_id not in (2791963)" # security+sumosupport+remedy+bpci+partners+llc@sumologic.com
+    if userId is not None:
+        query += " and user_id={0}".format(userId)
     srcDb.execute(query.format(srcOrgId))
 
     # iterate over all personal folders
@@ -162,19 +169,21 @@ def iteratePersonalFolders(srcDb, destDb, recoveryFolderId):
                 iterateFolders(srcDb, oldFolderId, destDb, newFolderId, indent)
 
 
-def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId):
-    srcDbConfig = config['srcDb']
-    srcHost, srcUser, srcPass = srcDbConfig['host'], srcDbConfig['user'], srcDbConfig['password']
+def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None):
+    srcAppDbConfig = config['srcAppDb']
+    srcHost, srcUser, srcPass = srcAppDbConfig['host'], srcAppDbConfig['user'], srcAppDbConfig['password']
 
-    destDbConfig = config['destDb']
-    destHost, destUser, destPass = destDbConfig['host'], destDbConfig['user'], destDbConfig['password']
+    destAppDbConfig = config['destAppDb']
+    destHost, destUser, destPass = destAppDbConfig['host'], destAppDbConfig['user'], destAppDbConfig['password']
 
+    srcOrgDbConfig = config['srcOrgDb']
     global users
-    users = org.getUserMap(srcHost, srcUser, srcPass, srcOrgId)
+    users = org.getUserMap(srcOrgDbConfig['host'], srcOrgDbConfig['user'], srcOrgDbConfig['password'], srcOrgId,
+                            userId)
 
     with util.SqlClient(srcHost, srcUser, srcPass) as srcDb, util.SqlClient(destHost, destUser, destPass) as destDb:
         startTime = time.time()
-        iteratePersonalFolders(srcDb, destDb, recoveryFolderId)
+        iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId)
         print("\nDone..time taken={0}m".format((time.time() - startTime) // 60))
 
 
@@ -183,6 +192,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', dest='srcOrgId', type=str, required=True, help='Source org id (in decimal)')
     parser.add_argument('-d', dest='destOrgId', type=str, required=True, help='Destination org id (in decimal)')
     parser.add_argument('-f', dest='folderId', type=str, required=True, help='Recovery folder id (in decimal)')
+    parser.add_argument('-u', dest='user', type=str, required=False,
+                        help='user id (in decimal) if recovery needs to run for a user only')
     parser.add_argument('--dry-run', dest='dry', action='store_true', help='List down panels that will be updated')
     args = parser.parse_args()
 
@@ -191,4 +202,5 @@ if __name__ == '__main__':
     srcOrgId = args.srcOrgId
     destOrgId = args.destOrgId
     recoveryFolderId = args.folderId
-    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId)
+    userId = args.user
+    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId)
