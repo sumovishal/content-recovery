@@ -13,13 +13,12 @@ config = {
         'user': "",
         'password': ""
     },
-    # The following should be the src/dest 'app' DB
-    'srcDb': {
+    'srcAppDb': {
         'host': "",
         'user': "",
         'password': ""
     },
-    'destDb': {
+    'destAppDb': {
         'host': "",
         'user': "",
         'password': ""
@@ -171,11 +170,11 @@ def iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId=None):
 
 
 def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None):
-    srcDbConfig = config['srcDb']
-    srcHost, srcUser, srcPass = srcDbConfig['host'], srcDbConfig['user'], srcDbConfig['password']
+    srcAppDbConfig = config['srcAppDb']
+    srcHost, srcUser, srcPass = srcAppDbConfig['host'], srcAppDbConfig['user'], srcAppDbConfig['password']
 
-    destDbConfig = config['destDb']
-    destHost, destUser, destPass = destDbConfig['host'], destDbConfig['user'], destDbConfig['password']
+    destAppDbConfig = config['destAppDb']
+    destHost, destUser, destPass = destAppDbConfig['host'], destAppDbConfig['user'], destAppDbConfig['password']
 
     srcOrgDbConfig = config['srcOrgDb']
     global users
