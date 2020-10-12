@@ -95,7 +95,7 @@ class Panel:
             print("Error getting timeRange: {0}. Falling back on default.".format(err))
             timeRangeApiJson = timeRangeDefaultJson
 
-        print("Original DB timeRange JSON: {0}. Converted API timeRange JSON: {1}".format(timeRangeJson, timeRangeApiJson))
+        logger.info("Original DB timeRange JSON: {0}. Converted API timeRange JSON: {1}".format(timeRangeJson, timeRangeApiJson))
         return timeRangeApiJson
 
     def getRelativeTimeRangeApiJson(self, timeRangeObject):
