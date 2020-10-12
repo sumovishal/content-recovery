@@ -26,7 +26,8 @@ config = {
     },
 }
 
-logger = logging.getLogger()
+logger = util.getLogger()
+logger.setLevel(logging.INFO)
 dryRun = False
 users = {}
 
@@ -144,7 +145,7 @@ def iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId=None):
              "name = 'Personal' and parent_id is null")
     #query += " and user_id not in (2791963)" # security+sumosupport+remedy+bpci+partners+llc@sumologic.com
     if userId is not None:
-        query += " and user_id={0}".format(deletedUserId)
+        query += " and user_id={0}".format(userId)
     srcDb.execute(query.format(srcOrgId))
 
     # iterate over all personal folders
@@ -178,7 +179,7 @@ def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None):
 
     srcOrgDbConfig = config['srcOrgDb']
     global users
-    users = util.getUserMap(srcOrgDbConfig['host'], srcOrgDbConfig['user'], srcOrgDbConfig['password'], srcOrgId,
+    users = org.getUserMap(srcOrgDbConfig['host'], srcOrgDbConfig['user'], srcOrgDbConfig['password'], srcOrgId,
                             userId)
 
     with util.SqlClient(srcHost, srcUser, srcPass) as srcDb, util.SqlClient(destHost, destUser, destPass) as destDb:
@@ -202,5 +203,5 @@ if __name__ == '__main__':
     srcOrgId = args.srcOrgId
     destOrgId = args.destOrgId
     recoveryFolderId = args.folderId
-    deletedUserId = args.user
-    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId)
+    userId = args.user
+    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId)
