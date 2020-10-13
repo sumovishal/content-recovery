@@ -128,6 +128,27 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
                 time.sleep(0.5)
 
 
+def recoverSingleSearchOnly(dbCursor):
+    # searchSystemId is the id of the search (PS Total Study Time - Outlier) in the snapshot
+    searchSystemId = 10493115
+    # parentId is the id of the parent folder in the Support Account where this search belongs
+    parentId = 15660161
+    query = ("select name, description, target_type, system_id, target_external_id "
+             "from content_tree "
+             "where system_id = {0}}")
+    dbCursor.execute(query.format(searchSystemId))
+
+    children = dbCursor.fetchall()
+    
+    if len(children) is not 1:
+        print("found mroe than one search")
+        exit(1)
+
+    for child in children:
+        name, description, targetType, oldContentId, targetExternalId = child[0], child[1], child[2], child[3], child[4]
+        search.createSearch(dbCursor, name, description, oldContentId, parentId, targetExternalId, "")
+
+
 def recover():
     global orgId, users, folderApi
 
@@ -142,12 +163,6 @@ def recover():
         startTime = time.time()
 
         print(f"Start recovery for {orgName}(id={orgId})..")
-        topFolderId = '00000000'
-        if not util.config['dryRun']:
-            folderApi = folder.FolderManagementApi(util.getApiClient())
-            myPersonalFolder = folderApi.get_personal_folder()
-            # parent folder for recovery
-            topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
-        createPersonalFolders(dbCursor, topFolderId)
+        recoverSingleSearchOnly(dbCursor)
         print("\nDone..time taken={0}s".format(int(time.time() - startTime)))
 
