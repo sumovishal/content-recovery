@@ -132,7 +132,7 @@ def recoverSingleSearchOnly(dbCursor):
     # searchSystemId is the id of the search (PS Total Study Time - Outlier) in the snapshot
     searchSystemId = '10493115'
     # parentId is the id in hex of the parent folder in the Support Account where this search belongs
-    parentId = '0000000000EEF481'
+    parentId = '0000000000EEC170'
     query = ("select name, description, target_type, system_id, target_external_id "
              "from content_tree "
              "where system_id = {0}")
