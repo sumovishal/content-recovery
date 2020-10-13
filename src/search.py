@@ -37,6 +37,7 @@ class Search:
 
 
 def getQueryParams(dbCursor, targetExternalId, indent):
+    # the saved_query_param table is using the search's target_external_id as the value for search_definition_id
     query = ("select name, label, description, param_type_id, default_value "
              "from saved_query_param "
              "where search_definition_id={0}")
