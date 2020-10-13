@@ -114,7 +114,7 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
             print("{0}[F]{1} - DONE (id: {2}, parent: {3})".format(' '*indent, name, folderId, newParentId))
         elif targetType == 'search':
             print("{0}[S]{1} - START".format(' '*indent, name))
-            search.createSearch(dbCursor, name, description, oldContentId, newParentId, indent, targetExternalId)
+            search.createSearch(dbCursor, name, description, oldContentId, newParentId, targetExternalId, indent)
             print("{0}[S]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
         elif targetType == 'report':
             print("{0}[R]{1}".format(' '*indent, name))

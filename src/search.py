@@ -78,7 +78,7 @@ def getAutoComplete():
     return autoComplete
 
 
-def createSearch(dbCursor, name, description, searchId, newParentId, indent, targetExternalId):
+def createSearch(dbCursor, name, description, searchId, newParentId, targetExternalId, indent):
     query = ("select search_query, time_range_expression, view_name, view_start_time, by_receipt_time "
              "from search_definition "
              "where content_id = {0}")
