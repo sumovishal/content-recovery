@@ -36,11 +36,11 @@ class Search:
         }
 
 
-def getQueryParams(dbCursor, searchId, indent):
+def getQueryParams(dbCursor, targetExternalId, indent):
     query = ("select name, label, description, param_type_id, default_value "
              "from saved_query_param "
              "where search_definition_id={0}")
-    dbCursor.execute(query.format(searchId))
+    dbCursor.execute(query.format(targetExternalId))
     results = dbCursor.fetchall()
 
     params = []
@@ -77,7 +77,7 @@ def getAutoComplete():
     return autoComplete
 
 
-def createSearch(dbCursor, name, description, searchId, newParentId, indent):
+def createSearch(dbCursor, name, description, searchId, newParentId, indent, targetExternalId):
     query = ("select search_query, time_range_expression, view_name, view_start_time, by_receipt_time "
              "from search_definition "
              "where content_id = {0}")
@@ -89,7 +89,7 @@ def createSearch(dbCursor, name, description, searchId, newParentId, indent):
 
     logger.info("Creating search: %s", name)
     newSearch = Search((name, description) + results[0])
-    newSearch.queryParams = getQueryParams(dbCursor, searchId, indent)
+    newSearch.queryParams = getQueryParams(dbCursor, targetExternalId, indent)
 
     logger.info("search json: %s", json.dumps(newSearch.asdict(), indent=4))
     if util.config['dryRun']:

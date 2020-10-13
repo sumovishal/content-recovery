@@ -96,7 +96,7 @@ def createPersonalFolders(dbCursor, topFolderId):
 
 
 def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
-    query = ("select name, description, target_type, system_id "
+    query = ("select name, description, target_type, system_id, target_external_id "
              "from content_tree "
              "where parent_id = {0} and target_type in ('search', 'folder', 'report')")
     #query += " and target_external_id=200496057"
@@ -105,7 +105,7 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
     children = dbCursor.fetchall()
     reqCount = 0
     for child in children:
-        name, description, targetType, oldContentId = child[0], child[1], child[2], child[3]
+        name, description, targetType, oldContentId, targetExternalId = child[0], child[1], child[2], child[3], child[4]
 
         if targetType == 'folder':
             print("{0}[F]{1} - START".format(' '*indent, name))
@@ -114,7 +114,7 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
             print("{0}[F]{1} - DONE (id: {2}, parent: {3})".format(' '*indent, name, folderId, newParentId))
         elif targetType == 'search':
             print("{0}[S]{1} - START".format(' '*indent, name))
-            search.createSearch(dbCursor, name, description, oldContentId, newParentId, indent)
+            search.createSearch(dbCursor, name, description, oldContentId, newParentId, indent, targetExternalId)
             print("{0}[S]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
         elif targetType == 'report':
             print("{0}[R]{1}".format(' '*indent, name))
