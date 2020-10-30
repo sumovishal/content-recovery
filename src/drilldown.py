@@ -169,7 +169,38 @@ def iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId=None):
                 iterateFolders(srcDb, oldFolderId, destDb, newFolderId, indent)
 
 
-def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None):
+# This method recovers content from a specific folder only, as opposed to all content from Personal folder
+def recoverPropertiesBlobFromSingleFolder(srcDb, destDb, recoveryFolderId, srcFolderId):
+    # find the folder to be recovered
+    query = ("select name, description "
+             "from content_tree "
+             "where organization_id = {0} and system_id = {1}")
+    srcDb.execute(query.format(srcOrgId, srcFolderId))
+
+    queryResults = srcDb.fetchall()
+    if len(queryResults) != 1:
+        print("ERROR: Expecting 1 folder with the provided folderId. Found: {0}.".format(srcFolderId))
+        exit(1)
+
+    for row in queryResults:
+        name, description = row[0], row[1]
+
+        # if user has some reports
+        query = ("select count(id) "
+                 "from content_tree "
+                 "where parent_id={0} and target_type in ('report', 'folder')")
+        srcDb.execute(query.format(srcFolderId))
+        count = srcDb.fetchall()[0][0]
+        if count > 0:
+            newFolderId = findFolder(destDb, destOrgId, name, recoveryFolderId)
+            if newFolderId:
+                print("\n== Folder: {0} ==".format(name))
+                indent = 2
+                print("{0}[F]Folder -> snapshotId: {1}, newId: {2}".format(' '*indent, srcFolderId, newFolderId))
+                iterateFolders(srcDb, srcFolderId, destDb, newFolderId, indent)
+
+
+def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None, srcFolderId=None):
     srcAppDbConfig = config['srcAppDb']
     srcHost, srcUser, srcPass = srcAppDbConfig['host'], srcAppDbConfig['user'], srcAppDbConfig['password']
 
@@ -178,12 +209,17 @@ def recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId=None):
 
     srcOrgDbConfig = config['srcOrgDb']
     global users
-    users = org.getUserMap(srcOrgDbConfig['host'], srcOrgDbConfig['user'], srcOrgDbConfig['password'], srcOrgId,
-                            userId)
+    # There is no need to get users map if we recover a specific folder only
+    if srcFolderId is None:
+        users = org.getUserMap(srcOrgDbConfig['host'], srcOrgDbConfig['user'], srcOrgDbConfig['password'], srcOrgId,
+                               userId)
 
     with util.SqlClient(srcHost, srcUser, srcPass) as srcDb, util.SqlClient(destHost, destUser, destPass) as destDb:
         startTime = time.time()
-        iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId)
+        if srcFolderId is not None:
+            recoverPropertiesBlobFromSingleFolder(srcDb, destDb, recoveryFolderId, srcFolderId)
+        else:
+            iteratePersonalFolders(srcDb, destDb, recoveryFolderId, userId)
         print("\nDone..time taken={0}m".format((time.time() - startTime) // 60))
 
 
@@ -194,6 +230,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', dest='folderId', type=str, required=True, help='Recovery folder id (in decimal)')
     parser.add_argument('-u', dest='user', type=str, required=False,
                         help='user id (in decimal) if recovery needs to run for a user only')
+    parser.add_argument('-srcFolder', dest='srcFolderId', type=str, required=False,
+                        help='folder id (in decimal) if recovery needs to run for a single folder only')
     parser.add_argument('--dry-run', dest='dry', action='store_true', help='List down panels that will be updated')
     args = parser.parse_args()
 
@@ -203,4 +241,5 @@ if __name__ == '__main__':
     destOrgId = args.destOrgId
     recoveryFolderId = args.folderId
     userId = args.user
-    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId)
+    srcFolderId = args.srcFolderId
+    recoverPropertiesBlob(srcOrgId, destOrgId, recoveryFolderId, userId, srcFolderId)

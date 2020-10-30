@@ -127,6 +127,32 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
                 reqCount = 0
                 time.sleep(0.5)
 
+# This method recovers content from a specific folder only, as opposed to all content from Personal folder
+def recoverSingleFolder(dbCursor, folderId, topFolderId):
+    # find the folder to be recovered
+    query = ("select name, description "
+             "from content_tree "
+             "where organization_id = {0} and system_id = {1}")
+    dbCursor.execute(query.format(orgId, folderId))
+
+    queryResults = dbCursor.fetchall()
+    if len(queryResults) != 1:
+        print("ERROR: Expecting 1 folder with the provided folderId. Found: {0}.".format(folderId))
+        exit(1)
+
+    for row in queryResults:
+        name, description = row[0], row[1]
+
+        query = ("select count(id) "
+                 "from content_tree "
+                 "where parent_id={0} and target_type in ('folder', 'search', 'report)")
+        dbCursor.execute(query.format(folderId))
+        count = dbCursor.fetchall()[0][0]
+        if count > 0:
+            print("\n== Folder: {0}, children: {1} ==".format(name, count))
+            newFolderId = createNewFolder(name, description, topFolderId)
+            createFolderStructure(dbCursor, folderId, newFolderId, 2)
+
 
 def recover():
     global orgId, users, folderApi
@@ -135,7 +161,10 @@ def recover():
     orgName = util.config['orgName']
     orgDb = util.config['orgDb']
     userId = util.config['userId']
-    users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId, userId)
+    folderId = util.config['folderId']
+    # There is no need to get users map if we recover a specific folder only
+    if folderId is None:
+        users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId, userId)
 
     appDb = util.config['appDb']
     with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as dbCursor:
@@ -148,6 +177,9 @@ def recover():
             myPersonalFolder = folderApi.get_personal_folder()
             # parent folder for recovery
             topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
-        createPersonalFolders(dbCursor, topFolderId)
+        if folderId is not None:
+            recoverSingleFolder(dbCursor, folderId, topFolderId)
+        else:
+            createPersonalFolders(dbCursor, topFolderId)
         print("\nDone..time taken={0}s".format(int(time.time() - startTime)))
 
