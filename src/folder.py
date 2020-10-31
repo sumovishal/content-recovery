@@ -145,7 +145,7 @@ def recoverSingleFolder(dbCursor, folderId, topFolderId):
 
         query = ("select count(id) "
                  "from content_tree "
-                 "where parent_id={0} and target_type in ('folder', 'search', 'report)")
+                 "where parent_id={0} and target_type in ('folder', 'search', 'report')")
         dbCursor.execute(query.format(folderId))
         count = dbCursor.fetchall()[0][0]
         if count > 0:
