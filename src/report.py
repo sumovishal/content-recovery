@@ -80,32 +80,66 @@ class Panel:
         }
 
         try:
-            timeRangeJson = json.loads(timeRange)
-            if len(timeRangeJson) != 1:
-                raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default.".format(timeRange))
-
-            timeRangeObject = timeRangeJson[0]
-            if timeRangeObject['t'] == 'relative':
-                timeRangeApiJson = self.getRelativeTimeRangeApiJson(timeRangeObject)
-            elif timeRangeObject['t'] == 'literal':
-                timeRangeApiJson = self.getLiteralTimeRangeApiJson(timeRangeObject)
-            else:
-                raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default.".format(timeRange))
+            timeRangeApiJson = self.getTimeRangeApiJson(timeRange)
         except Exception as err:
             print("Error getting timeRange: {0}. Falling back on default.".format(err))
             timeRangeApiJson = timeRangeDefaultJson
 
-        logger.info("Original DB timeRange JSON: {0}. Converted API timeRange JSON: {1}".format(timeRangeJson, timeRangeApiJson))
+        logger.info("Original DB timeRange JSON: {0}. Converted API timeRange JSON: {1}".format(timeRange,
+                                                                                                timeRangeApiJson))
         return timeRangeApiJson
 
-    def getRelativeTimeRangeApiJson(self, timeRangeObject):
-        return {
-            'type': 'BeginBoundedTimeRange',
-            'from': {
+    def getTimeRangeApiJson(self, timeRange):
+        timeRangeJson = json.loads(timeRange)
+        if len(timeRangeJson) == 1:
+            timeRangeObject = timeRangeJson[0]
+            if timeRangeObject['t'] == 'relative':
+                return {
+                    'type': 'BeginBoundedTimeRange',
+                    'from': self.getTimeRangeBoundary(timeRangeObject)
+                }
+            elif timeRangeObject['t'] == 'literal':
+                if timeRangeObject['d'] in ('yesterday', 'previous_week', 'previous_month'):
+                    return {
+                        'type': 'CompleteLiteralTimeRange',
+                        'rangeName': timeRangeObject['d']
+                    }
+                else:
+                    return {
+                        'type': 'BeginBoundedTimeRange',
+                        'from': self.getLiteralTimeRangeApiJson(timeRangeObject)
+                    }
+            else:
+                raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default."
+                                .format(timeRange))
+        elif len(timeRangeJson) == 2:
+            timeRangeFromObject = timeRangeJson[0]
+            timeRangeToObject = timeRangeJson[1]
+            return {
+                'type': 'BeginBoundedTimeRange',
+                'from': self.getTimeRangeBoundary(timeRangeFromObject),
+                'to': self.getTimeRangeBoundary(timeRangeToObject)
+            }
+        else:
+            raise Exception("Conversion for the following timeRange isn't supported: {0}. Falling back on default."
+                            .format(timeRange))
+
+    def getTimeRangeBoundary(self, timeRangeObject):
+        if timeRangeObject['t'] == 'relative':
+            return {
                 'type': 'RelativeTimeRangeBoundary',
                 'relativeTime': self.getRelativeTime(timeRangeObject['d'])
-            },
-        }
+            }
+        elif timeRangeObject['t'] == 'literal':
+            return self.getLiteralTimeRangeApiJson(timeRangeObject)
+        elif timeRangeObject['t'] == 'absolute' and isinstance(timeRangeObject['d'], int):
+            return {
+                'type': 'EpochTimeRangeBoundary',
+                'relativeTime': timeRangeObject['d']
+            }
+        else:
+            Exception("Conversion for the following timeRangeBoundary isn't supported: {0}. Falling back on default."
+                      .format(timeRangeObject))
 
     def getRelativeTime(self, millisecs):
         if millisecs == 0:
@@ -136,18 +170,11 @@ class Panel:
         return currRelativeTimeString
 
     def getLiteralTimeRangeApiJson(self, timeRangeObject):
-        if timeRangeObject['d'] in ('yesterday', 'previous_week', 'previous_month'):
+        if timeRangeObject['d'] in ('now', 'today', 'second', 'minute', 'hour', 'day', 'week', 'month', 'year',
+                                    'yesterday', 'previous_week', 'previous_month'):
             return {
-                'type': 'CompleteLiteralTimeRange',
+                'type': 'LiteralTimeRangeBoundary',
                 'rangeName': timeRangeObject['d']
-            }
-        elif timeRangeObject['d'] in ('now', 'today', 'second', 'minute', 'hour', 'day', 'week', 'month', 'year'):
-            return {
-                'type': 'BeginBoundedTimeRange',
-                'from': {
-                    'type': 'LiteralTimeRangeBoundary',
-                    'rangeName': timeRangeObject['d']
-                }
             }
         else:
             raise Exception("Unrecognized literal value: {0}. Falling back on default.".format(timeRangeObject['d']))
