@@ -135,7 +135,7 @@ class Panel:
         elif timeRangeObject['t'] == 'absolute' and isinstance(timeRangeObject['d'], int):
             return {
                 'type': 'EpochTimeRangeBoundary',
-                'relativeTime': timeRangeObject['d']
+                'epochMillis': timeRangeObject['d']
             }
         else:
             Exception("Conversion for the following timeRangeBoundary isn't supported: {0}. Falling back on default."
