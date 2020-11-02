@@ -41,6 +41,15 @@ if util.config['appDb']['user'] is None:
 if util.config['appDb']['password'] is None:
     sys.exit("Set the app db password")
 
+if util.config['conciergeDb']['host'] is None:
+    sys.exit("Set the concierge db endpoint")
+
+if util.config['conciergeDb']['user'] is None:
+    sys.exit("Set the concierge db user")
+
+if util.config['conciergeDb']['password'] is None:
+    sys.exit("Set the concierge db password")
+
 if not args.dry and util.config['api']['endpoint'] is "":
     sys.exit("Set the API endpoint for deployment where you want to recover content")
 

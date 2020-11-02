@@ -66,7 +66,7 @@ def createTopFolder(name, description, parentId):
     return topFolderId
 
 
-def createPersonalFolders(dbCursor, topFolderId):
+def createPersonalFolders(appDbCursor, conciergeDbCursor, topFolderId):
     # find all personal folders
     query = ("select user_id, description, system_id "
              "from content_tree "
@@ -74,10 +74,10 @@ def createPersonalFolders(dbCursor, topFolderId):
              "name = 'Personal' and parent_id is null")
     if util.config['userId']:
         query += f" and user_id = {util.config['userId']}"
-    dbCursor.execute(query.format(orgId))
+    appDbCursor.execute(query.format(orgId))
 
     # iterate over all personal folders and create all content underneath
-    queryResults = dbCursor.fetchall()
+    queryResults = appDbCursor.fetchall()
     for row in queryResults:
         userId, description, oldPersonalFolderId = row[0], row[1], row[2]
         # if user does not exist, use userId as folder name
@@ -87,22 +87,21 @@ def createPersonalFolders(dbCursor, topFolderId):
         query = ("select count(id) "
                  "from content_tree "
                  "where parent_id={0} and target_type in ('folder', 'search')")
-        dbCursor.execute(query.format(oldPersonalFolderId))
-        count = dbCursor.fetchall()[0][0]
+        appDbCursor.execute(query.format(oldPersonalFolderId))
+        count = appDbCursor.fetchall()[0][0]
         if count > 0:
             print("\n== Personal Folder: {0}, children: {1} ==".format(name, count))
             personalFolderId = createNewFolder(name, description, topFolderId)
-            createFolderStructure(dbCursor, oldPersonalFolderId, personalFolderId, 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, oldPersonalFolderId, personalFolderId, 2)
 
 
-def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
+def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParentId, indent):
     query = ("select name, description, target_type, system_id, target_external_id "
              "from content_tree "
              "where parent_id = {0} and target_type in ('search', 'folder', 'report')")
-    #query += " and target_external_id=200496057"
-    dbCursor.execute(query.format(oldParentId))
+    appDbCursor.execute(query.format(oldParentId))
 
-    children = dbCursor.fetchall()
+    children = appDbCursor.fetchall()
     reqCount = 0
     for child in children:
         name, description, targetType, oldContentId, targetExternalId = child[0], child[1], child[2], child[3], child[4]
@@ -110,15 +109,15 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
         if targetType == 'folder':
             print("{0}[F]{1} - START".format(' '*indent, name))
             folderId = createNewFolder(name, description, newParentId)
-            createFolderStructure(dbCursor, oldContentId, folderId, indent + 2)
+            createFolderStructure(appDbCursor, oldContentId, folderId, indent + 2)
             print("{0}[F]{1} - DONE (id: {2}, parent: {3})".format(' '*indent, name, folderId, newParentId))
         elif targetType == 'search':
             print("{0}[S]{1} - START".format(' '*indent, name))
-            search.createSearch(dbCursor, name, description, oldContentId, newParentId, targetExternalId, indent)
+            search.createSearch(appDbCursor, conciergeDbCursor, name, description, oldContentId, newParentId, targetExternalId, indent)
             print("{0}[S]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
         elif targetType == 'report':
             print("{0}[R]{1}".format(' '*indent, name))
-            report.createReport(dbCursor, name, description, oldContentId, newParentId, indent)
+            report.createReport(appDbCursor, name, description, oldContentId, newParentId, indent)
             print("{0}[R]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
 
         if not util.config['dryRun']:
@@ -127,15 +126,16 @@ def createFolderStructure(dbCursor, oldParentId, newParentId, indent):
                 reqCount = 0
                 time.sleep(0.5)
 
+
 # This method recovers content from a specific folder only, as opposed to all content from Personal folder
-def recoverSingleFolder(dbCursor, folderId, topFolderId):
+def recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId):
     # find the folder to be recovered
     query = ("select name, description "
              "from content_tree "
              "where organization_id = {0} and system_id = {1}")
-    dbCursor.execute(query.format(orgId, folderId))
+    appDbCursor.execute(query.format(orgId, folderId))
 
-    queryResults = dbCursor.fetchall()
+    queryResults = appDbCursor.fetchall()
     if len(queryResults) != 1:
         print("ERROR: Expecting 1 folder with the provided folderId. Found: {0}.".format(folderId))
         exit(1)
@@ -146,12 +146,12 @@ def recoverSingleFolder(dbCursor, folderId, topFolderId):
         query = ("select count(id) "
                  "from content_tree "
                  "where parent_id={0} and target_type in ('folder', 'search', 'report')")
-        dbCursor.execute(query.format(folderId))
-        count = dbCursor.fetchall()[0][0]
+        appDbCursor.execute(query.format(folderId))
+        count = appDbCursor.fetchall()[0][0]
         if count > 0:
             print("\n== Folder: {0}, children: {1} ==".format(name, count))
             newFolderId = createNewFolder(name, description, topFolderId)
-            createFolderStructure(dbCursor, folderId, newFolderId, 2)
+            createFolderStructure(appDbCursor, folderId, newFolderId, 2)
 
 
 def recover():
@@ -167,7 +167,9 @@ def recover():
         users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId, userId)
 
     appDb = util.config['appDb']
-    with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as dbCursor:
+    conciergeDb = util.config['appDb']
+    with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as appDbCursor,\
+            util.SqlClient(conciergeDb['host'], conciergeDb['user'], conciergeDb['password'], "org") as conciergeDbCursor:
         startTime = time.time()
 
         print(f"Start recovery for {orgName}(id={orgId})..")
@@ -178,8 +180,8 @@ def recover():
             # parent folder for recovery
             topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
         if folderId is not None:
-            recoverSingleFolder(dbCursor, folderId, topFolderId)
+            recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId)
         else:
-            createPersonalFolders(dbCursor, topFolderId)
+            createPersonalFolders(appDbCursor, conciergeDbCursor, topFolderId)
         print("\nDone..time taken={0}s".format(int(time.time() - startTime)))
 

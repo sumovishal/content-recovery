@@ -15,6 +15,11 @@ config = {
         'user': "",
         'password': ""
     },
+    'conciergeDb': {
+        'host': "",
+        'user': "",
+        'password': ""
+    },
     'api': {
         'accessId': "",
         'accessKey': "",

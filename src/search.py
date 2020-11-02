@@ -19,9 +19,10 @@ class Search:
         self.viewStartTime = row[5]
         self.byReceiptTime = row[6]
         self.queryParams = []
+        self.searchSchedule = None
 
     def asdict(self):
-        return {
+        search = {
             'type': self.type,
             'name': self.name,
             'description': self.description,
@@ -34,6 +35,10 @@ class Search:
                 'queryParameters': self.queryParams,
             },
         }
+        if self.searchSchedule is not None:
+            print("{0} is a scheduled search".format(self.name))
+            search['searchSchedule'] = self.searchSchedule
+        return search
 
 
 def getQueryParams(dbCursor, targetExternalId, indent):
@@ -78,19 +83,26 @@ def getAutoComplete():
     return autoComplete
 
 
-def createSearch(dbCursor, name, description, searchId, newParentId, targetExternalId, indent):
+# Tries to get the corresponding search schedule from concierge DB. If not found, then it's not a scheduled search
+def getSearchSchedule(conciergeDbCursor, targetExternalId, indent):
+    print("TODO")
+    return {}
+
+
+def createSearch(appDbCursor, conciergeDbCursor, name, description, searchId, newParentId, targetExternalId, indent):
     query = ("select search_query, time_range_expression, view_name, view_start_time, by_receipt_time "
              "from search_definition "
              "where content_id = {0}")
-    dbCursor.execute(query.format(searchId))
-    results = dbCursor.fetchall()
+    appDbCursor.execute(query.format(searchId))
+    results = appDbCursor.fetchall()
     if not results:
         print("{0}ERROR: no search with id: {1}".format(' '*indent, searchId))
         return
 
     logger.info("Creating search: %s", name)
     newSearch = Search((name, description) + results[0])
-    newSearch.queryParams = getQueryParams(dbCursor, targetExternalId, indent)
+    newSearch.queryParams = getQueryParams(appDbCursor, targetExternalId, indent)
+    newSearch.searchSchedule = getSearchSchedule(conciergeDbCursor, targetExternalId, indent)
 
     logger.info("search json: %s", json.dumps(newSearch.asdict(), indent=4))
     if util.config['dryRun']:
