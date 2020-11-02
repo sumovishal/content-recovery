@@ -109,7 +109,7 @@ def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParent
         if targetType == 'folder':
             print("{0}[F]{1} - START".format(' '*indent, name))
             folderId = createNewFolder(name, description, newParentId)
-            createFolderStructure(appDbCursor, oldContentId, folderId, indent + 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, oldContentId, folderId, indent + 2)
             print("{0}[F]{1} - DONE (id: {2}, parent: {3})".format(' '*indent, name, folderId, newParentId))
         elif targetType == 'search':
             print("{0}[S]{1} - START".format(' '*indent, name))
@@ -151,7 +151,7 @@ def recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId):
         if count > 0:
             print("\n== Folder: {0}, children: {1} ==".format(name, count))
             newFolderId = createNewFolder(name, description, topFolderId)
-            createFolderStructure(appDbCursor, folderId, newFolderId, 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, folderId, newFolderId, 2)
 
 
 def recover():
