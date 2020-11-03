@@ -1,6 +1,7 @@
 import json
 
 import util
+import timerange
 from sumologic import client
 from sumologic.api import content
 
@@ -83,10 +84,135 @@ def getAutoComplete():
     return autoComplete
 
 
+# Gets the notification object for the corresponding scheduleId
+def getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent):
+    query = ("SELECT notification_type, notification_data "
+             "FROM schedule_notification "
+             "WHERE schedule_id = {0}")
+    conciergeDbCursor.execute(query.format(scheduleId))
+    rows = conciergeDbCursor.fetchall()
+    if not rows:
+        print("{0}ERROR: No notification found for schedule with id {1}".format(' '*indent, scheduleId))
+        return {}
+    elif len(rows) != 1:
+        print("{0}ERROR: Found more than 1 notifications for schedule with id {1}".format(' '*indent, scheduleId))
+        return None
+
+    dbSNotificationRow = rows[0]
+    # Salesforce only has WebhookSearchNotificationSyncDefinition currently, so this logic only support that.
+    if dbSNotificationRow[0] != 5:
+        print("{0}ERROR: Only WebhookSearchNotificationSyncDefinition type is currently supported".format(' '*indent))
+        return {}
+
+    try:
+        notificationDataJson = json.loads(dbSNotificationRow[1])
+        notification = {
+            'taskType': 'WebhookSearchNotificationSyncDefinition',
+            'webhookId': notificationDataJson['webhookId'],
+            'payload': notificationDataJson['payload']
+        }
+        if notificationDataJson['itemizeAlerts'] is not None:
+            notification['itemizeAlerts'] = notificationDataJson['itemizeAlerts']
+        if notificationDataJson['maxItemizedAlerts'] is not None:
+            notification['maxItemizedAlerts'] = notificationDataJson['maxItemizedAlerts']
+        return notification
+    except Exception:
+        print("{0}ERROR: Couldn't parse the following notification object from DB: {1}"
+              .format(' '*indent, dbSNotificationRow[1]))
+        return {}
+
+
+# Gets the notification object for the corresponding scheduleId
+def getSearchScheduleParameters(conciergeDbCursor, scheduleId):
+    params = []
+    query = ("SELECT param_name, param_value "
+             "FROM schedule_query_param "
+             "WHERE search_schedule_id = {0}")
+    conciergeDbCursor.execute(query.format(scheduleId))
+    rows = conciergeDbCursor.fetchall()
+    if not rows:
+        return params
+
+    for row in rows:
+        param = {
+            'name': row[0],
+            'value': row[1]
+        }
+        params.append(param)
+
+    return params
+
+
+# Converts the schedule search type from DB to API format
+# Conversion logic can be found here: https://github.com/Sanyaku/sumologic/blob/3b342030d7f4a32a3b8b0e204a11450157e3a260/external/src/main/scala/com/sumologic/external/util/ScheduleTypeConversionHelper.scala#L29
+def convertSearchScheduleType(scheduleType, indent):
+    if scheduleType == 'Real time':
+        return 'RealTime'
+    elif scheduleType == 'Every 15 minutes':
+        return '15Minutes'
+    elif scheduleType == 'Hourly':
+        return '1Hour'
+    elif scheduleType == 'Every 2 hours':
+        return '2Hours'
+    elif scheduleType == 'Every 4 hours':
+        return '4Hours'
+    elif scheduleType == 'Every 6 hours':
+        return '6Hours'
+    elif scheduleType == 'Every 8 hours':
+        return '8Hours'
+    elif scheduleType == 'Every 12 hours':
+        return '12Hours'
+    elif scheduleType == 'Daily':
+        return '1Day'
+    elif scheduleType == 'Weekly':
+        return '1Week'
+    elif scheduleType == 'Custom':
+        return 'Custom'
+    else:
+        print("{0}Error: Found an unrecognized scheduleType: {1}", ' '*indent, scheduleType)
+        return ''
+
+
 # Tries to get the corresponding search schedule from concierge DB. If not found, then it's not a scheduled search
 def getSearchSchedule(conciergeDbCursor, targetExternalId, indent):
-    print("TODO")
-    return {}
+    query = ("SELECT id, cron_schedule, displayable_time_range, parseable_time_range, time_zone, threshold_type, "
+             "operator, count, schedule_type, mute_error_emails "
+             "FROM search_schedule "
+             "WHERE saved_search_id = {0}")
+    conciergeDbCursor.execute(query.format(targetExternalId))
+    rows = conciergeDbCursor.fetchall()
+    if not rows:
+        # this search is not a schedule search
+        return None
+
+    print("{0}Search with target_external_id of {1} is a scheduled search".format(' '*indent, targetExternalId))
+    if len(rows) != 1:
+        print("{0}ERROR: Found more than 1 search schedule for target_external_id={1}"
+              .format(' '*indent, targetExternalId))
+        return None
+    dbSearchRow = rows[0]
+    scheduleId = dbSearchRow[0]
+
+    searchSchedule = {}
+    if dbSearchRow[1] is not None:
+        searchSchedule['cronExpression'] = dbSearchRow[1]
+    if dbSearchRow[2] is not None:
+        searchSchedule['displayableTimeRange'] = dbSearchRow[2]
+    searchSchedule['parseableTimeRange'] = timerange.convertDbToApiTimeRange(dbSearchRow[3])
+    searchSchedule['timeZone'] = timerange.convertDbToApiTimeRange(dbSearchRow[4])
+    if dbSearchRow[5] is not None:
+        searchSchedule['threshold'] = {
+            'thresholdType': 'message' if (int(dbSearchRow[5]) == 1) else 'group',
+            'operator': dbSearchRow[6],
+            'count': dbSearchRow[7]
+        }
+    searchSchedule['notification'] = getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent)
+    searchSchedule['scheduleType'] = convertSearchScheduleType(dbSearchRow[8])
+    if dbSearchRow[9] is not None:
+        searchSchedule['muteErrorEmails'] = 1 # TODO: Change this to actual alerts once ready: False if (dbSearchRow[9] == 0) else True
+    searchSchedule['parameters'] = getSearchScheduleParameters(conciergeDbCursor, scheduleId)
+
+    return searchSchedule
 
 
 def createSearch(appDbCursor, conciergeDbCursor, name, description, searchId, newParentId, targetExternalId, indent):
