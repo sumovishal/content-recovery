@@ -37,7 +37,6 @@ class Search:
             },
         }
         if self.searchSchedule is not None:
-            print("{0} is a scheduled search".format(self.name))
             search['searchSchedule'] = self.searchSchedule
         return search
 
@@ -108,12 +107,13 @@ def getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent):
         notificationDataJson = json.loads(dbSNotificationRow[1])
         notification = {
             'taskType': 'WebhookSearchNotificationSyncDefinition',
-            'webhookId': notificationDataJson['webhookId'],
-            'payload': notificationDataJson['payload']
+            'webhookId': notificationDataJson['webhookId']
         }
-        if notificationDataJson['itemizeAlerts'] is not None:
+        if 'payload' in notificationDataJson:
+            notification['payload'] = notificationDataJson['payload']
+        if 'itemizeAlerts' in notificationDataJson:
             notification['itemizeAlerts'] = notificationDataJson['itemizeAlerts']
-        if notificationDataJson['maxItemizedAlerts'] is not None:
+        if 'maxItemizedAlerts' in notificationDataJson:
             notification['maxItemizedAlerts'] = notificationDataJson['maxItemizedAlerts']
         return notification
     except Exception:
@@ -199,7 +199,7 @@ def getSearchSchedule(conciergeDbCursor, targetExternalId, indent):
     if dbSearchRow[2] is not None:
         searchSchedule['displayableTimeRange'] = dbSearchRow[2]
     searchSchedule['parseableTimeRange'] = timerange.convertDbToApiTimeRange(dbSearchRow[3])
-    searchSchedule['timeZone'] = timerange.convertDbToApiTimeRange(dbSearchRow[4])
+    searchSchedule['timeZone'] = dbSearchRow[4]
     if dbSearchRow[5] is not None:
         searchSchedule['threshold'] = {
             'thresholdType': 'message' if (int(dbSearchRow[5]) == 1) else 'group',
@@ -207,7 +207,7 @@ def getSearchSchedule(conciergeDbCursor, targetExternalId, indent):
             'count': dbSearchRow[7]
         }
     searchSchedule['notification'] = getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent)
-    searchSchedule['scheduleType'] = convertSearchScheduleType(dbSearchRow[8])
+    searchSchedule['scheduleType'] = convertSearchScheduleType(dbSearchRow[8], indent)
     if dbSearchRow[9] is not None:
         searchSchedule['muteErrorEmails'] = 1 # TODO: Change this to actual alerts once ready: False if (dbSearchRow[9] == 0) else True
     searchSchedule['parameters'] = getSearchScheduleParameters(conciergeDbCursor, scheduleId)

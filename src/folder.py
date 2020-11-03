@@ -167,9 +167,9 @@ def recover():
         users = org.getUserMap(orgDb['host'], orgDb['user'], orgDb['password'], orgId, userId)
 
     appDb = util.config['appDb']
-    conciergeDb = util.config['appDb']
+    conciergeDb = util.config['conciergeDb']
     with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as appDbCursor,\
-            util.SqlClient(conciergeDb['host'], conciergeDb['user'], conciergeDb['password'], "org") as conciergeDbCursor:
+            util.SqlClient(conciergeDb['host'], conciergeDb['user'], conciergeDb['password'], "schedules") as conciergeDbCursor:
         startTime = time.time()
 
         print(f"Start recovery for {orgName}(id={orgId})..")
