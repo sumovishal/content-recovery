@@ -209,7 +209,7 @@ def getSearchSchedule(conciergeDbCursor, targetExternalId, indent):
     searchSchedule['notification'] = getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent)
     searchSchedule['scheduleType'] = convertSearchScheduleType(dbSearchRow[8], indent)
     if dbSearchRow[9] is not None:
-        searchSchedule['muteErrorEmails'] = 1 # TODO: Change this to actual alerts once ready: False if (dbSearchRow[9] == 0) else True
+        searchSchedule['muteErrorEmails'] = False if (dbSearchRow[9] == 0) else True
     searchSchedule['parameters'] = getSearchScheduleParameters(conciergeDbCursor, scheduleId)
 
     return searchSchedule
