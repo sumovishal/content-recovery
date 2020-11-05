@@ -107,7 +107,7 @@ def getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent):
         notificationDataJson = json.loads(dbSNotificationRow[1])
         notification = {
             'taskType': 'WebhookSearchNotificationSyncDefinition',
-            'webhookId': notificationDataJson['webhookId']
+            'webhookId': convertToHex(int(notificationDataJson['webhookId']))
         }
         if 'payload' in notificationDataJson:
             notification['payload'] = notificationDataJson['payload']
@@ -120,6 +120,15 @@ def getSearchScheduleNotification(conciergeDbCursor, scheduleId, indent):
         print("{0}ERROR: Couldn't parse the following notification object from DB: {1}"
               .format(' '*indent, dbSNotificationRow[1]))
         return {}
+
+
+# Converts an integer to 16-digit hex (prepending 0's if needed)
+def convertToHex(number):
+    hexString = hex(number).lstrip("0x")
+    hexLength = len(hexString)
+    if hexLength < 16:
+        hexString = ("0"*(16-hexLength)) + hexString
+    return hexString
 
 
 # Gets the notification object for the corresponding scheduleId
