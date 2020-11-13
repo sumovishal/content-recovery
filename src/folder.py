@@ -6,6 +6,7 @@ import util
 import org
 import search
 import report
+import dashboard
 
 
 orgId = None
@@ -66,7 +67,7 @@ def createTopFolder(name, description, parentId):
     return topFolderId
 
 
-def createPersonalFolders(appDbCursor, conciergeDbCursor, topFolderId):
+def createPersonalFolders(appDbCursor, conciergeDbCursor, cqDbCursor, topFolderId):
     # find all personal folders
     query = ("select user_id, description, system_id "
              "from content_tree "
@@ -92,10 +93,10 @@ def createPersonalFolders(appDbCursor, conciergeDbCursor, topFolderId):
         if count > 0:
             print("\n== Personal Folder: {0}, children: {1} ==".format(name, count))
             personalFolderId = createNewFolder(name, description, topFolderId)
-            createFolderStructure(appDbCursor, conciergeDbCursor, oldPersonalFolderId, personalFolderId, 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, cqDbCursor, oldPersonalFolderId, personalFolderId, 2)
 
 
-def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParentId, indent):
+def createFolderStructure(appDbCursor, conciergeDbCursor, cqDbCursor, oldParentId, newParentId, indent):
     query = ("select name, description, target_type, system_id, target_external_id "
              "from content_tree "
              "where parent_id = {0} and target_type in ('search', 'folder', 'report')")
@@ -109,7 +110,7 @@ def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParent
         if targetType == 'folder':
             print("{0}[F]{1} - START".format(' '*indent, name))
             folderId = createNewFolder(name, description, newParentId)
-            createFolderStructure(appDbCursor, conciergeDbCursor, oldContentId, folderId, indent + 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, cqDbCursor, oldContentId, folderId, indent + 2)
             print("{0}[F]{1} - DONE (id: {2}, parent: {3})".format(' '*indent, name, folderId, newParentId))
         elif targetType == 'search':
             print("{0}[S]{1} - START".format(' '*indent, name))
@@ -118,6 +119,10 @@ def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParent
         elif targetType == 'report':
             print("{0}[R]{1}".format(' '*indent, name))
             report.createReport(appDbCursor, name, description, oldContentId, newParentId, indent)
+            print("{0}[R]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
+        elif targetType == 'dashboard':
+            print("{0}[R]{1}".format(' '*indent, name))
+            dashboard.createDashboard(cqDbCursor, name, description, targetExternalId, indent)
             print("{0}[R]{1} - DONE (parent: {2})".format(' '*indent, name, newParentId))
 
         if not util.config['dryRun']:
@@ -128,7 +133,7 @@ def createFolderStructure(appDbCursor, conciergeDbCursor, oldParentId, newParent
 
 
 # This method recovers content from a specific folder only, as opposed to all content from Personal folder
-def recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId):
+def recoverSingleFolder(appDbCursor, conciergeDbCursor, cqDbCursor, folderId, topFolderId):
     # find the folder to be recovered
     query = ("select name, description "
              "from content_tree "
@@ -151,7 +156,7 @@ def recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId):
         if count > 0:
             print("\n== Folder: {0}, children: {1} ==".format(name, count))
             newFolderId = createNewFolder(name, description, topFolderId)
-            createFolderStructure(appDbCursor, conciergeDbCursor, folderId, newFolderId, 2)
+            createFolderStructure(appDbCursor, conciergeDbCursor, cqDbCursor, folderId, newFolderId, 2)
 
 
 def recover():
@@ -168,8 +173,10 @@ def recover():
 
     appDb = util.config['appDb']
     conciergeDb = util.config['conciergeDb']
+    cqDb = util.config['cqDb']
     with util.SqlClient(appDb['host'], appDb['user'], appDb['password'], "org") as appDbCursor,\
-            util.SqlClient(conciergeDb['host'], conciergeDb['user'], conciergeDb['password'], "schedules") as conciergeDbCursor:
+            util.SqlClient(conciergeDb['host'], conciergeDb['user'], conciergeDb['password'], "schedules") as conciergeDbCursor,\
+            util.SqlClient(cqDb['host'], cqDb['user'], cqDb['password'], "dashboard") as cqDbCursor:
         startTime = time.time()
 
         print(f"Start recovery for {orgName}(id={orgId})..")
@@ -180,8 +187,8 @@ def recover():
             # parent folder for recovery
             topFolderId = createTopFolder(f"{orgName} - Recovered Content", "All recovered content", myPersonalFolder['id'])
         if folderId is not None:
-            recoverSingleFolder(appDbCursor, conciergeDbCursor, folderId, topFolderId)
+            recoverSingleFolder(appDbCursor, conciergeDbCursor, cqDbCursor, folderId, topFolderId)
         else:
-            createPersonalFolders(appDbCursor, conciergeDbCursor, topFolderId)
+            createPersonalFolders(appDbCursor, conciergeDbCursor, cqDbCursor, topFolderId)
         print("\nDone..time taken={0}s".format(int(time.time() - startTime)))
 

@@ -20,6 +20,11 @@ config = {
         'user': "",
         'password': ""
     },
+    'cqDb': {
+        'host': "",
+        'user': "",
+        'password': ""
+    },
     'api': {
         'accessId': "",
         'accessKey': "",
