@@ -46,7 +46,7 @@ class Panel:
     def asdict(self):
         return {
             'key': self.key,
-            'title': self.title,
+            'title': self.title.replace(u"\u00A0", " "),
             'panelType': self.panelType,
             'visualSettings': self.visualSettings,
             'timeRange': None if (self.timeRange is None) else timerange.convertDbToApiTimeRange(self.timeRange),
@@ -175,17 +175,23 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
 
 
 def formatLayoutObject(layout, indent):
-    if not layout.startsWith("GridLayout"):
-        print("{0}layout type not supported", indent)
+    # For some reason the DB longblob for layout has some extra characters that the API can't handle.... Strip those
+    layout = layout.replace("\x00", "").replace("\x05", "").replace("\x14", "").replace("\x02", "").replace("\x10", "")\
+        .replace("\x06", "").replace("\x16", "").replace("|", "").replace("~", "").replace(u"\u0000", "")
+    if not layout.startswith("GridLayout"):
+        print("{0}ERROR: layout type not supported for layout: {1}".format(" "*indent, layout))
+        return None
 
-    layout = layout.lstrip("GridLayout").trim().lstrip("*")
+    layout = layout.lstrip("GridLayout").strip().lstrip("*")
     panels = layout.split("*")
     panelLayouts = []
     for panel in panels:
         key = panel[:panel.index("{")]
         panelLayout = {
-            "key": key,
-            "structure": json.dumps(panel.lstrip(key))
+            # For some reason in the DB *sometimes* an extra character gets appended which makes the panel layout
+            # mismatch the panels.... Just strip it if so
+            "key": key[:-1] if len(key) == 22 else key,
+            "structure": panel.lstrip(key)
         }
         panelLayouts.append(panelLayout)
 
