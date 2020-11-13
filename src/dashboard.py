@@ -95,7 +95,7 @@ def convertToHex(number):
 
 def getVariableSourceDefinition(cqDbCursor, variableHexId, indent):
     query = ("select variable_source_type, csv_values "
-             "from variable "
+             "from variable_source_definition "
              "where variable_id='{0}'")
     cqDbCursor.execute(query.format(variableHexId))
     results = cqDbCursor.fetchall()
@@ -127,7 +127,7 @@ def getVariables(cqDbCursor, dashboardHexId, indent):
 
     variables = []
     for row in results:
-        logger.info("{0}Creating query for panel with id: {1}".format(" "*indent, dashboardHexId))
+        print("{0}Creating query for panel with id: {1}".format(" "*indent, dashboardHexId))
         variable = Variable(row[1])
         variable.sourceDefinition = getVariableSourceDefinition(cqDbCursor, row[0], indent)
         variables.append(variable)
@@ -146,7 +146,7 @@ def getQueries(cqDbCursor, panelHexId, indent):
 
     queries = []
     for row in results:
-        logger.info("{0}Creating query for panel with id: {1}".format(" "*indent, panelHexId))
+        print("{0}Creating query for panel with id: {1}".format(" "*indent, panelHexId))
         query = Query(row)
         queries.append(query)
     return queries
@@ -167,7 +167,7 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
         if row[2] != "SumoSearchPanel":
             print("{0}Panel type not supported: {1}", " "*indent, row[2])
             continue
-        logger.info("{0}Creating panel for dashboard with id: {1}".format(" "*indent, dashboardHexId))
+        print("{0}Creating panel for dashboard with id: {1}".format(" "*indent, dashboardHexId))
         panel = Panel(row)
         panel.queries = getQueries(cqDbCursor, row[5], indent)
         # All Salesforce's panels do not have parent panels / variables
@@ -188,12 +188,12 @@ def createDashboard(cqDbCursor, name, description, targetExternalId, indent):
     cqDbCursor.execute(query.format(dashboardHexId))
     results = cqDbCursor.fetchall()
     if not results:
-        logger.error("no dashboard with id: {0}".format(dashboardHexId))
+        print("no dashboard with id: {0}".format(dashboardHexId))
         return
 
-    logger.info("Creating dashboard: %s", name)
+    print("Creating dashboard: %s", name)
     newDashboard = Dashboard((name, description) + results[0])
     newDashboard.panels = getPanels(cqDbCursor, dashboardHexId, indent)
     newDashboard.variables = getVariables(cqDbCursor, dashboardHexId, indent)
 
-    logger.info("dashboard json: %s", json.dumps(newDashboard.asdict(), indent=4))
+    print("dashboard json: {0}".format(json.dumps(newDashboard.asdict())))
