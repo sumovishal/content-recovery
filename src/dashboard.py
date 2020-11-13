@@ -82,6 +82,10 @@ class Query:
 
 # Converts an integer to 16-digit hex (prepending 0's if needed)
 def convertToHex(number):
+    if number < 0:
+        offset = 1 << 64
+        mask = offset - 1
+        number = number + offset & mask
     hexString = hex(number).lstrip("0x")
     hexLength = len(hexString)
     if hexLength < 16:
@@ -92,7 +96,7 @@ def convertToHex(number):
 def getVariableSourceDefinition(cqDbCursor, variableHexId, indent):
     query = ("select variable_source_type, csv_values "
              "from variable "
-             "where variable_id = {0}")
+             "where variable_id='{0}'")
     cqDbCursor.execute(query.format(variableHexId))
     results = cqDbCursor.fetchall()
     if not results:
@@ -114,7 +118,7 @@ def getVariableSourceDefinition(cqDbCursor, variableHexId, indent):
 def getVariables(cqDbCursor, dashboardHexId, indent):
     query = ("select hex_id, name "
              "from variable "
-             "where dashboard_id = {0}")
+             "where dashboard_id='{0}'")
     cqDbCursor.execute(query.format(dashboardHexId))
     results = cqDbCursor.fetchall()
     if not results:
@@ -133,7 +137,7 @@ def getVariables(cqDbCursor, dashboardHexId, indent):
 def getQueries(cqDbCursor, panelHexId, indent):
     query = ("select query_type, query_string, query_key "
              "from query "
-             "where panel_id = {0}")
+             "where panel_id='{0}'")
     cqDbCursor.execute(query.format(panelHexId))
     results = cqDbCursor.fetchall()
     if not results:
@@ -151,7 +155,7 @@ def getQueries(cqDbCursor, panelHexId, indent):
 def getPanels(cqDbCursor, dashboardHexId, indent):
     query = ("select panel_key, panel_title, panel_type, visual_settings, time_range, hex_id "
              "from panel "
-             "where dashboard_id = {0}")
+             "where dashboard_id='{0}'")
     cqDbCursor.execute(query.format(dashboardHexId))
     results = cqDbCursor.fetchall()
     if not results:
@@ -177,9 +181,10 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
 # it to create it as well via the API
 def createDashboard(cqDbCursor, name, description, targetExternalId, indent):
     dashboardHexId = convertToHex(targetExternalId)
-    query = ("select title, timeRange "
+    print(dashboardHexId)
+    query = ("select title, time_range "
              "from dashboard "
-             "where hex_id = {0}")
+             "where hex_id='{0}'")
     cqDbCursor.execute(query.format(dashboardHexId))
     results = cqDbCursor.fetchall()
     if not results:
