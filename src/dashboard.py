@@ -130,6 +130,7 @@ def getVariables(cqDbCursor, dashboardHexId, indent):
         print("{0}Creating query for panel with id: {1}".format(" "*indent, dashboardHexId))
         variable = Variable(row[1])
         variable.sourceDefinition = getVariableSourceDefinition(cqDbCursor, row[0], indent)
+        print("{0}Variable created: {1}".format(" "*indent, variable.asdict()))
         variables.append(variable)
     return variables
 
@@ -148,6 +149,7 @@ def getQueries(cqDbCursor, panelHexId, indent):
     for row in results:
         print("{0}Creating query for panel with id: {1}".format(" "*indent, panelHexId))
         query = Query(row)
+        print("{0}Query created: {1}".format(" "*indent, query.asdict()))
         queries.append(query)
     return queries
 
@@ -173,6 +175,7 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
         # All Salesforce's panels do not have parent panels / variables
         panel.panels = []
         panel.variables = []
+        print("{0}Panel created: {1}".format(" "*indent, panel.asdict()))
         panels.append(panel)
     return panels
 
