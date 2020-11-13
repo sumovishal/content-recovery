@@ -16,6 +16,7 @@ class Dashboard:
         self.title = row[2]
         self.timeRange = row[3]
         self.refreshInterval = row[4]
+        self.layout = {}
         self.panels = []
         self.variables = []
 
@@ -27,6 +28,7 @@ class Dashboard:
             'title': self.title,
             'timeRange': None if (self.timeRange is None) else timerange.convertDbToApiTimeRange(self.timeRange),
             'refreshInterval': self.refreshInterval,
+            'layout': self.layout,
             'panels': [panel.asdict() for panel in self.panels],
             'variables': [variable.asdict() for variable in self.variables]
         }
@@ -172,11 +174,32 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
     return panels
 
 
+def formatLayoutObject(layout, indent):
+    if not layout.startsWith("GridLayout"):
+        print("{0}layout type not supported", indent)
+
+    layout = layout.lstrip("GridLayout").trim().lstrip("*")
+    panels = layout.split("*")
+    panelLayouts = []
+    for panel in panels:
+        key = panel[:panel.index("{")]
+        panelLayout = {
+            "key": key,
+            "structure": json.dumps(panel.lstrip(key))
+        }
+        panelLayouts.append(panelLayout)
+
+    return {
+        "layoutType": "Grid",
+        "layoutStructures": panelLayouts
+    }
+
+
 # This method simply logs the dashboard object and does NOT actually create it. This code would need to be extended for
 # it to create it as well via the API
 def createDashboard(cqDbCursor, name, description, targetExternalId, indent):
     dashboardHexId = convertToHex(targetExternalId)
-    query = ("select title, time_range, refresh_interval "
+    query = ("select title, time_range, refresh_interval, layout "
              "from dashboard "
              "where hex_id='{0}'")
     cqDbCursor.execute(query.format(dashboardHexId))
@@ -187,6 +210,7 @@ def createDashboard(cqDbCursor, name, description, targetExternalId, indent):
 
     logger.info("Creating dashboard: {0}".format(name))
     newDashboard = Dashboard((name, description) + results[0])
+    newDashboard.layout = formatLayoutObject(results[0][3].decode("utf-8"), indent)
     newDashboard.panels = getPanels(cqDbCursor, dashboardHexId, indent)
     newDashboard.variables = getVariables(cqDbCursor, dashboardHexId, indent)
 
