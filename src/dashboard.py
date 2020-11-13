@@ -15,7 +15,7 @@ class Dashboard:
         self.description = row[1]
         self.title = row[2]
         self.timeRange = row[3]
-        self.refreshInterval = row[3]
+        self.refreshInterval = row[4]
         self.panels = []
         self.variables = []
 
@@ -40,8 +40,6 @@ class Panel:
         self.visualSettings = row[3].decode("utf-8")
         self.timeRange = row[4]
         self.queries = []
-        self.panels = []
-        self.variables = []
 
     def asdict(self):
         return {
@@ -51,8 +49,6 @@ class Panel:
             'visualSettings': self.visualSettings,
             'timeRange': None if (self.timeRange is None) else timerange.convertDbToApiTimeRange(self.timeRange),
             'queries': [query.asdict() for query in self.queries],
-            'panels': self.panels,
-            'variables': self.variables,
         }
 
 
@@ -172,9 +168,6 @@ def getPanels(cqDbCursor, dashboardHexId, indent):
         logger.info("{0}Creating panel for dashboard with id: {1}".format(" "*indent, dashboardHexId))
         panel = Panel(row)
         panel.queries = getQueries(cqDbCursor, row[5], indent)
-        # All Salesforce's panels do not have parent panels / variables
-        panel.panels = []
-        panel.variables = []
         panels.append(panel)
     return panels
 
